@@ -1,0 +1,36 @@
+local S = game:GetService
+local RS = S("RunService")
+local Chars = workspace:WaitForChild("Characters")
+
+local NAME = "Dummy"
+local FILL_COLOR = Color3.fromRGB(255, 0, 0) -- Cor interna (Vermelho)
+local OUT_COLOR = Color3.fromRGB(255, 255, 255) -- Cor da borda (Branco)
+
+-- Função para aplicar ou atualizar o Highlight
+local function applyESP(model)
+    if not model:IsA("Model") then return end
+    
+    local h = model:FindFirstChild("ESPHighlight") or Instance.new("Highlight")
+    h.Name = "ESPHighlight"
+    h.FillColor = FILL_COLOR
+    h.OutlineColor = OUT_COLOR
+    h.FillTransparency = 0.5 -- Opcional: Deixa um pouco transparente
+    h.OutlineTransparency = 0
+    h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    h.Parent = model
+end
+
+-- Monitora novos Dummies que entrarem no workspace.Characters
+Chars.ChildAdded:Connect(function(child)
+    if child.Name == NAME then
+        applyESP(child)
+    end
+end)
+
+-- Verifica os Dummies que já existem ao iniciar o script
+for _, child in ipairs(Chars:GetChildren()) do
+    if child.Name == NAME then
+        applyESP(child)
+    end
+end
+
