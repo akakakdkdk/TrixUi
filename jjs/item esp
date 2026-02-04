@@ -1,0 +1,82 @@
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local ItemsFolder = workspace:WaitForChild("Items")
+
+local HIGHLIGHT_COLOR = Color3.fromRGB(128, 0, 128) 
+-- Adicionei esta variável para controlar o tamanho do texto
+local TEXT_SIZE = 20 
+
+local trackedItems = {}
+
+local CUSTOM_FONT = Font.new("rbxassetid://12187375716", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+
+local function createNameTag(part)
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "ESPNameTag"
+    billboard.Size = UDim2.new(0, 200, 0, 40)
+    billboard.StudsOffset = Vector3.new(0, 2, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Adornee = part
+    billboard.Parent = part
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextStrokeTransparency = 0
+    
+    -- MUDANÇAS AQUI:
+    label.TextScaled = false -- Desativa o ajuste automático
+    label.TextSize = TEXT_SIZE -- Define o tamanho fixo que escolhemos lá em cima
+    
+    label.FontFace = CUSTOM_FONT
+    label.Text = part.Name
+    label.Parent = billboard
+end
+
+local function createHighlight(part)
+    local highlight = Instance.new("Highlight")
+    highlight.FillColor = HIGHLIGHT_COLOR
+    highlight.OutlineColor = HIGHLIGHT_COLOR
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Parent = part
+end
+
+local function addESP(part)
+    if trackedItems[part] then
+        return
+    end
+    createHighlight(part)
+    createNameTag(part)
+    trackedItems[part] = true
+end
+
+local function onPartRemoved(part)
+    trackedItems[part] = nil
+end
+
+local function scanFolder()
+    for _, item in ipairs(ItemsFolder:GetDescendants()) do
+        if item:IsA("BasePart") then
+            addESP(item)
+        end
+    end
+end
+
+-- Inicializa a varredura
+scanFolder()
+
+ItemsFolder.DescendantAdded:Connect(function(descendant)
+    if descendant:IsA("BasePart") then
+        addESP(descendant)
+    end
+end)
+
+ItemsFolder.DescendantRemoving:Connect(function(descendant)
+    if trackedItems[descendant] then
+        onPartRemoved(descendant)
+    end
+end)
