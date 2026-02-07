@@ -1,53 +1,42 @@
--- 1. Controle de Instância (Evita bugs ao atualizar o script)
-getgenv().FocusMonitorAtivo = false
-task.wait(0.1)
-
--- 2. Configuração da Toggle (Pode ser alterada pela sua GUI)
-getgenv().FocusEnabled = getgenv().FocusEnabled or true 
-getgenv().FocusMonitorAtivo = true
+-- // CONFIGURAÇÃO INICIAL
+getgenv().FocusEnabled = true 
 
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
-local LocalPlayer = game:GetService('Players').LocalPlayer
-
--- Função que executa a segunda parte do golpe
-local function ExecutarFocusAutomatico(habilidadeObj)
-    -- Só continua se a toggle estiver ligada
-    if not getgenv().FocusEnabled then return end
-
-    -- O script original espera 0.33 segundos antes do segundo hit
-    task.wait(0.33)
-
-    -- Verifica novamente se ainda está ligado após o wait
-    if not getgenv().FocusEnabled then return end
-
-    local focusService = ReplicatedStorage:WaitForChild('Knit'):WaitForChild('Knit'):WaitForChild('Services'):WaitForChild('FocusStrikeService'):WaitForChild('RE'):WaitForChild('Activated')
-    
-    focusService:FireServer(habilidadeObj)
-    print("Auto: Segundo Focus Strike disparado!")
-end
-
--- 3. O GATILHO (Hookmetamethod para detectar seu uso manual)
 local focusRemote = ReplicatedStorage:WaitForChild('Knit'):WaitForChild('Knit'):WaitForChild('Services'):WaitForChild('FocusStrikeService'):WaitForChild('RE'):WaitForChild('Activated')
 
+local scriptDisparando = false 
+
+-- // LÓGICA DO SEGUNDO HIT
+local function DispararSegundoHit(habilidadeObj)
+    -- Verifica o toggle antes de esperar e antes de atirar
+    if not getgenv().FocusEnabled then return end
+    
+    task.wait(0.33)
+    
+    if getgenv().FocusEnabled then
+        scriptDisparando = true 
+        focusRemote:FireServer(habilidadeObj)
+        task.wait(0.1) 
+        scriptDisparando = false 
+    end
+end
+
+-- // O GATILHO (Monitora o clique)
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local method = getnamecallmethod()
     local args = {...}
 
-    -- Verifica se o monitor e a toggle estão ativos
-    if not getgenv().FocusMonitorAtivo or not getgenv().FocusEnabled then
-        return oldNamecall(self, ...)
-    end
-
-    -- Se você disparou o Focus Strike manualmente
-    if self == focusRemote and method == "FireServer" then
-        -- args[1] costuma ser o objeto da habilidade passado no FireServer
-        task.spawn(function()
-            ExecutarFocusAutomatico(args[1])
-        end)
+    -- O Toggle 'FocusEnabled' controla se o hook deve ou não agir
+    if getgenv().FocusEnabled and self == focusRemote and method == "FireServer" and not scriptDisparando then
+        if args[1] then
+            task.spawn(function()
+                DispararSegundoHit(args[1])
+            end)
+        end
     end
 
     return oldNamecall(self, ...)
 end)
 
-print("Monitor Focus Strike: Ativado e aguardando uso manual.")
+print("Focus Strike com Toggle carregado! Use getgenv().FocusEnabled para ligar/desligar.")
