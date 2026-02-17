@@ -159,7 +159,7 @@ end
 -- Steal Build
 function Library:StealBuild()
     if not writefile then return "writefile is not supported" end
-    self:InitRemotes() -- Garante que os remotes estão carregados
+    self:InitRemotes()
 
     local todasParts = {}
     local dadosSalvos = { Parts = {}, LogicParts = {} }
@@ -205,7 +205,6 @@ function Library:StealBuild()
         }
 
         if isLogic then
-            -- Captura todos os atributos relevantes
             local inputsArg3 = part:GetAttribute('Inputs_Arg3')
             if inputsArg3 then dados.Inputs_Arg3 = inputsArg3 end
 
@@ -235,7 +234,6 @@ function Library:StealBuild()
             local destAttr = part:GetAttribute('Destination')
             if destAttr then dados.Destination = {destAttr:GetComponents()} end
 
-            -- Captura filhos (StringValue, NumberValue, etc)
             local filhos = {}
             for _, child in ipairs(part:GetChildren()) do
                 if child:IsA('StringValue') or child:IsA('NumberValue') or child:IsA('BoolValue') or child:IsA('ObjectValue') then
@@ -311,7 +309,6 @@ function Library:LoadFromFile(filename)
                     part.Anchored = true
                     part.Parent = model
 
-                    -- Restaura atributos
                     if partData.MoveName then part:SetAttribute('MoveName', partData.MoveName) end
                     if partData.MoveNameFt then part:SetAttribute('MoveNameFt', partData.MoveNameFt) end
                     if partData.Dict then part:SetAttribute('Dict', partData.Dict) end
@@ -325,7 +322,6 @@ function Library:LoadFromFile(filename)
                     if partData.Inputs_Arg4 then part:SetAttribute('Inputs_Arg4', partData.Inputs_Arg4) end
                     if partData.AccessoryId then part:SetAttribute('AccessoryId', partData.AccessoryId) end
 
-                    -- Restaura filhos
                     if partData.Filhos then
                         for nome, valor in pairs(partData.Filhos) do
                             local child = Instance.new('StringValue')
@@ -359,7 +355,7 @@ function Library:BuildModel()
         return "Nenhum modelo carregado ou já construindo"
     end
 
-    self:InitRemotes() -- Garante remotes atualizados
+    self:InitRemotes()
     state.isBuilding = true
     state.stopRequested = false
 
@@ -398,7 +394,6 @@ function Library:BuildModel()
         return "Nenhuma parte para construir"
     end
 
-    -- Calcula origem
     local origin, pivot
     if settings.BuildMode == 'Player' then
         if not sourceModel.PrimaryPart then
@@ -420,7 +415,6 @@ function Library:BuildModel()
     local index = 0
     local failedParts = {}
 
-    -- --- Constrói partes normais ---
     for i, part in ipairs(normalParts) do
         if state.stopRequested then break end
         while state.isPaused do task.wait() end
@@ -461,7 +455,6 @@ function Library:BuildModel()
         if settings.BuildDelay > 0 then task.wait(settings.BuildDelay) end
     end
 
-    -- --- Constrói partes lógicas ---
     for i, partData in ipairs(logicParts) do
         if state.stopRequested then break end
         while state.isPaused do task.wait() end
@@ -494,7 +487,6 @@ function Library:BuildModel()
         if newPart then
             task.wait(0.05)
 
-            -- --- Aplica configurações específicas ---
             if logicType == "Moveset" or logicType == "Special" or logicType == "Awakening" or logicType == "MovesetClear" then
                 local id = part:GetAttribute('Inputs_Arg3') or (part:FindFirstChild('Inputs_Arg3') and part.Inputs_Arg3.Value)
                 remotes.BuildEvent:FireServer('Inputs', {newPart}, id or '1', '')
@@ -546,7 +538,6 @@ function Library:BuildModel()
         if settings.BuildDelay > 0 then task.wait(settings.BuildDelay) end
     end
 
-    -- Tentar recuperar falhas
     if #failedParts > 0 and not state.stopRequested then
         task.wait(1.0)
         for _, partInfo in ipairs(failedParts) do
@@ -568,7 +559,6 @@ function Library:BuildModel()
     return "Construção concluída com " .. #failedParts .. " falhas"
 end
 
--- Funções de controle
 function Library:PauseBuild()
     Library.AutoBuilder.State.isPaused = not Library.AutoBuilder.State.isPaused
     return Library.AutoBuilder.State.isPaused and "Pausado" or "Continuando"
@@ -594,7 +584,7 @@ function Library:GetPlayerRoot()
     return char and char:FindFirstChild('HumanoidRootPart')
 end
 
--- ============ WINDOW CREATION FUNCTION (MODIFICADA) ============
+-- ============ WINDOW CREATION FUNCTION ============
 function Library:CreateWindow(title, iconName)
     local theme = Library.CurrentTheme
     local ScreenGui = Instance.new("ScreenGui")
@@ -602,136 +592,167 @@ function Library:CreateWindow(title, iconName)
     ScreenGui.ResetOnSpawn = false
     ScreenGui.Parent = gethui and gethui() or game:GetService("CoreGui") or LocalPlayer:WaitForChild("PlayerGui")
 
+    -- Frame principal com bordas mais arredondadas
     local Main = Instance.new("Frame", ScreenGui)
-    Main.Size = UDim2.new(0, 240, 0, 550) -- Aumentado para caber todos os elementos
-    Main.Position = UDim2.new(0.5, -120, 0.5, -275)
+    Main.Size = UDim2.new(0, 240, 0, 500)
+    Main.Position = UDim2.new(0.5, -120, 0.5, -250)
     Main.BackgroundColor3 = theme.Main
     Main.BorderSizePixel = 0
     Main.Active = true
     Main.Draggable = true
+    Main.ClipsDescendants = true
 
-    Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 8)
-    local Stroke = Instance.new("UIStroke", Main)
-    Stroke.Color = theme.Outline
+    -- Cantos mais arredondados
+    local MainCorner = Instance.new("UICorner")
+    MainCorner.CornerRadius = UDim.new(0, 16)
+    MainCorner.Parent = Main
+
+    -- Sombra/Stroke
+    local Stroke = Instance.new("UIStroke")
+    Stroke.Color = theme.Accent
     Stroke.Thickness = 1.5
+    Stroke.Transparency = 0.5
+    Stroke.Parent = Main
 
+    -- Header com gradiente
     local Header = Instance.new("Frame", Main)
-    Header.Size = UDim2.new(1, 0, 0, 40)
+    Header.Size = UDim2.new(1, 0, 0, 45)
     Header.BackgroundColor3 = theme.Secondary
     Header.BorderSizePixel = 0
 
-    local HeaderCorner = Instance.new("UICorner", Header)
-    HeaderCorner.CornerRadius = UDim.new(0, 8)
+    local HeaderCorner = Instance.new("UICorner")
+    HeaderCorner.CornerRadius = UDim.new(0, 16)
     HeaderCorner.Parent = Header
 
     local Title = Instance.new("TextLabel", Header)
-    Title.Size = UDim2.new(1, -40, 1, 0)
-    Title.Position = UDim2.new(0, 40, 0, 0)
+    Title.Size = UDim2.new(1, -80, 1, 0)
+    Title.Position = UDim2.new(0, iconName and 45 or 15, 0, 0)
     Title.BackgroundTransparency = 1
     Title.Text = title or "Window"
     Title.TextColor3 = theme.Text
     Title.TextXAlignment = Enum.TextXAlignment.Left
     Title.Font = Enum.Font.GothamBold
-    Title.TextSize = 14
+    Title.TextSize = 15
 
     if iconName and Library.Icons[iconName] then
         local TitleIcon = Instance.new("ImageLabel", Header)
-        TitleIcon.Size = UDim2.new(0, 20, 0, 20)
-        TitleIcon.Position = UDim2.new(0, 10, 0.5, -10)
+        TitleIcon.Size = UDim2.new(0, 22, 0, 22)
+        TitleIcon.Position = UDim2.new(0, 12, 0.5, -11)
         TitleIcon.BackgroundTransparency = 1
         TitleIcon.Image = Library.Icons[iconName]
         TitleIcon.ImageColor3 = theme.Text
-    else
-        -- Espaço reservado para quando não há ícone
-        Title.Position = UDim2.new(0, 15, 0, 0)
     end
 
+    -- Botão fechar
     local CloseBtn = Instance.new("TextButton", Header)
-    CloseBtn.Size = UDim2.new(0, 26, 0, 26)
-    CloseBtn.Position = UDim2.new(1, -31, 0.5, -13)
+    CloseBtn.Size = UDim2.new(0, 28, 0, 28)
+    CloseBtn.Position = UDim2.new(1, -38, 0.5, -14)
     CloseBtn.BackgroundColor3 = theme.Secondary
     CloseBtn.Text = "×"
     CloseBtn.TextColor3 = theme.Text
-    CloseBtn.TextSize = 20
+    CloseBtn.TextSize = 22
     CloseBtn.Font = Enum.Font.Gotham
-    Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 6)
-    local cStroke = Instance.new("UIStroke", CloseBtn)
-    cStroke.Color = theme.Outline
+    CloseBtn.AutoButtonColor = false
+
+    local CloseCorner = Instance.new("UICorner")
+    CloseCorner.CornerRadius = UDim.new(0, 8)
+    CloseCorner.Parent = CloseBtn
+
     CloseBtn.Activated:Connect(function() ScreenGui:Destroy() end)
 
+    -- Container principal com padding
     local Container = Instance.new("ScrollingFrame", Main)
-    Container.Size = UDim2.new(1, -20, 1, -55)
-    Container.Position = UDim2.new(0, 10, 0, 45)
+    Container.Size = UDim2.new(1, -20, 1, -60)
+    Container.Position = UDim2.new(0, 10, 0, 50)
     Container.BackgroundTransparency = 1
-    Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    Container.BorderSizePixel = 0
     Container.ScrollBarThickness = 4
     Container.ScrollBarImageColor3 = theme.Accent
+    Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    Container.CanvasSize = UDim2.new(0, 0, 0, 0)
+
     local Layout = Instance.new("UIListLayout", Container)
-    Layout.Padding = UDim.new(0, 8)
+    Layout.Padding = UDim.new(0, 10)
     Layout.SortOrder = Enum.SortOrder.LayoutOrder
+
     local Padding = Instance.new("UIPadding", Container)
     Padding.PaddingTop = UDim.new(0, 5)
     Padding.PaddingBottom = UDim.new(0, 5)
 
     local Elements = {}
 
-    -- Elemento Label existente
+    -- Label (seção)
     function Elements:Label(text)
         local Label = Instance.new("TextLabel", Container)
-        Label.Size = UDim2.new(1, 0, 0, 22)
+        Label.Size = UDim2.new(1, 0, 0, 24)
         Label.BackgroundTransparency = 1
         Label.Text = text
         Label.TextColor3 = theme.Text
         Label.TextTransparency = 0.3
         Label.Font = Enum.Font.GothamBold
-        Label.TextSize = 12
+        Label.TextSize = 13
         Label.TextXAlignment = Enum.TextXAlignment.Left
     end
 
-    -- Elemento CopyLabel existente
+    -- CopyLabel
     function Elements:CopyLabel(text, content)
         local Frame = Instance.new("Frame", Container)
-        Frame.Size = UDim2.new(1, 0, 0, 30)
+        Frame.Size = UDim2.new(1, 0, 0, 32)
         Frame.BackgroundTransparency = 1
+
         local Label = Instance.new("TextLabel", Frame)
-        Label.Size = UDim2.new(0.7, -5, 1, 0)
+        Label.Size = UDim2.new(0.65, -5, 1, 0)
         Label.BackgroundTransparency = 1
         Label.Text = text
         Label.TextColor3 = theme.Text
         Label.Font = Enum.Font.Gotham
-        Label.TextSize = 11
+        Label.TextSize = 12
         Label.TextXAlignment = Enum.TextXAlignment.Left
+
         local Btn = Instance.new("TextButton", Frame)
-        Btn.Size = UDim2.new(0.3, -5, 0.8, 0)
-        Btn.Position = UDim2.new(0.7, 0, 0.1, 0)
+        Btn.Size = UDim2.new(0.35, -5, 0.8, 0)
+        Btn.Position = UDim2.new(0.65, 0, 0.1, 0)
         Btn.BackgroundColor3 = theme.Accent
         Btn.Text = "Copy"
         Btn.TextColor3 = theme.Main
         Btn.Font = Enum.Font.GothamBold
-        Btn.TextSize = 10
-        Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 4)
+        Btn.TextSize = 11
+        Btn.AutoButtonColor = false
+
+        local BtnCorner = Instance.new("UICorner")
+        BtnCorner.CornerRadius = UDim.new(0, 8)
+        BtnCorner.Parent = Btn
+
         Btn.Activated:Connect(function()
-            if setclipboard then setclipboard(content or text) Btn.Text = "✓" task.wait(0.5) Btn.Text = "Copy" end
+            if setclipboard then
+                setclipboard(content or text)
+                Btn.Text = "✓"
+                task.wait(0.5)
+                Btn.Text = "Copy"
+            end
         end)
     end
 
-    -- Elemento Button existente
+    -- Button
     function Elements:Button(text, iconName, callback)
         local Button = Instance.new("TextButton", Container)
-        Button.Size = UDim2.new(1, 0, 0, 32)
+        Button.Size = UDim2.new(1, 0, 0, 38)
         Button.BackgroundColor3 = theme.Secondary
-        Button.Text = (iconName and "     " or "") .. text
+        Button.Text = (iconName and "    " or "") .. text
         Button.TextColor3 = theme.Text
         Button.Font = Enum.Font.Gotham
-        Button.TextSize = 12
+        Button.TextSize = 13
         Button.TextXAlignment = Enum.TextXAlignment.Left
         Button.AutoButtonColor = false
-        Instance.new("UICorner", Button).CornerRadius = UDim.new(0, 6)
+
+        local BtnCorner = Instance.new("UICorner")
+        BtnCorner.CornerRadius = UDim.new(0, 10)
+        BtnCorner.Parent = Button
 
         if iconName and Library.Icons[iconName] then
             local Icon = Instance.new("ImageLabel", Button)
-            Icon.Size = UDim2.new(0, 16, 0, 16)
-            Icon.Position = UDim2.new(0, 8, 0.5, -8)
+            Icon.Size = UDim2.new(0, 18, 0, 18)
+            Icon.Position = UDim2.new(0, 12, 0.5, -9)
             Icon.BackgroundTransparency = 1
             Icon.Image = Library.Icons[iconName]
             Icon.ImageColor3 = theme.Text
@@ -747,44 +768,59 @@ function Library:CreateWindow(title, iconName)
         end)
     end
 
-    -- Elemento Slider existente (ligeiramente ajustado)
+    -- Slider
     function Elements:Slider(text, min, max, default, callback)
         local defaultVal = math.clamp(default, min, max)
         local SliderFrame = Instance.new("Frame", Container)
-        SliderFrame.Size = UDim2.new(1, 0, 0, 42)
+        SliderFrame.Size = UDim2.new(1, 0, 0, 45)
         SliderFrame.BackgroundTransparency = 1
+
         local Label = Instance.new("TextLabel", SliderFrame)
         Label.Text = text
-        Label.Size = UDim2.new(1, -40, 0, 18)
+        Label.Size = UDim2.new(1, -50, 0, 20)
         Label.BackgroundTransparency = 1
         Label.TextColor3 = theme.Text
         Label.Font = Enum.Font.Gotham
-        Label.TextSize = 11
+        Label.TextSize = 12
         Label.TextXAlignment = Enum.TextXAlignment.Left
+
         local ValLabel = Instance.new("TextLabel", SliderFrame)
         ValLabel.Text = tostring(defaultVal)
-        ValLabel.Size = UDim2.new(0, 40, 0, 18)
-        ValLabel.Position = UDim2.new(1, -40, 0, 0)
+        ValLabel.Size = UDim2.new(0, 50, 0, 20)
+        ValLabel.Position = UDim2.new(1, -50, 0, 0)
         ValLabel.BackgroundTransparency = 1
         ValLabel.TextColor3 = theme.Accent
         ValLabel.Font = Enum.Font.GothamBold
-        ValLabel.TextSize = 11
+        ValLabel.TextSize = 12
         ValLabel.TextXAlignment = Enum.TextXAlignment.Right
+
         local Bar = Instance.new("Frame", SliderFrame)
-        Bar.Size = UDim2.new(1, -6, 0, 4)
-        Bar.Position = UDim2.new(0, 3, 0, 24)
+        Bar.Size = UDim2.new(1, -6, 0, 6)
+        Bar.Position = UDim2.new(0, 3, 0, 25)
         Bar.BackgroundColor3 = theme.Secondary
-        Instance.new("UICorner", Bar)
+
+        local BarCorner = Instance.new("UICorner")
+        BarCorner.CornerRadius = UDim.new(1, 0)
+        BarCorner.Parent = Bar
+
         local Fill = Instance.new("Frame", Bar)
         Fill.Size = UDim2.new((defaultVal - min) / (max - min), 0, 1, 0)
         Fill.BackgroundColor3 = theme.Accent
-        Instance.new("UICorner", Fill)
+
+        local FillCorner = Instance.new("UICorner")
+        FillCorner.CornerRadius = UDim.new(1, 0)
+        FillCorner.Parent = Fill
+
         local Circle = Instance.new("Frame", Fill)
-        Circle.Size = UDim2.new(0, 10, 0, 10)
+        Circle.Size = UDim2.new(0, 14, 0, 14)
         Circle.AnchorPoint = Vector2.new(0.5, 0.5)
         Circle.Position = UDim2.new(1, 0, 0.5, 0)
         Circle.BackgroundColor3 = theme.Accent
-        Instance.new("UICorner", Circle).CornerRadius = UDim.new(1, 0)
+
+        local CircleCorner = Instance.new("UICorner")
+        CircleCorner.CornerRadius = UDim.new(1, 0)
+        CircleCorner.Parent = Circle
+
         local dragging = false
         local function Update(input)
             local pos = math.clamp((input.Position.X - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X, 0, 1)
@@ -794,92 +830,111 @@ function Library:CreateWindow(title, iconName)
             ValLabel.Text = tostring(val)
             if callback then pcall(callback, val) end
         end
+
         Bar.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true Update(input) end
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = true
+                Update(input)
+            end
         end)
+
         UserInputService.InputChanged:Connect(function(input)
-            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then Update(input) end
+            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                Update(input)
+            end
         end)
+
         UserInputService.InputEnded:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = false
+            end
         end)
     end
 
-    -- Elemento Dropdown existente (completado)
+    -- Dropdown
     function Elements:Dropdown(text, list, callback)
         local DropdownFrame = Instance.new("Frame", Container)
-        DropdownFrame.Size = UDim2.new(1, 0, 0, 32)
+        DropdownFrame.Size = UDim2.new(1, 0, 0, 38)
         DropdownFrame.BackgroundColor3 = theme.Secondary
         DropdownFrame.ClipsDescendants = true
-        Instance.new("UICorner", DropdownFrame).CornerRadius = UDim.new(0, 6)
+
+        local DropCorner = Instance.new("UICorner")
+        DropCorner.CornerRadius = UDim.new(0, 10)
+        DropCorner.Parent = DropdownFrame
 
         local DropBtn = Instance.new("TextButton", DropdownFrame)
-        DropBtn.Size = UDim2.new(1, -10, 1, 0)
-        DropBtn.Position = UDim2.new(0, 10, 0, 0)
+        DropBtn.Size = UDim2.new(1, -16, 1, 0)
+        DropBtn.Position = UDim2.new(0, 8, 0, 0)
         DropBtn.BackgroundTransparency = 1
         DropBtn.Text = text .. "  ▼"
         DropBtn.TextColor3 = theme.Text
         DropBtn.Font = Enum.Font.Gotham
-        DropBtn.TextSize = 12
+        DropBtn.TextSize = 13
         DropBtn.TextXAlignment = Enum.TextXAlignment.Left
 
         local OptionScroll = Instance.new("ScrollingFrame", DropdownFrame)
-        OptionScroll.Size = UDim2.new(1, -10, 0, 120)
-        OptionScroll.Position = UDim2.new(0, 5, 0, 32)
+        OptionScroll.Size = UDim2.new(1, -10, 0, 140)
+        OptionScroll.Position = UDim2.new(0, 5, 0, 38)
         OptionScroll.BackgroundTransparency = 1
         OptionScroll.BorderSizePixel = 0
         OptionScroll.ScrollBarThickness = 4
         OptionScroll.ScrollBarImageColor3 = theme.Accent
         OptionScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
         OptionScroll.Visible = false
+
         local OptionLayout = Instance.new("UIListLayout", OptionScroll)
         OptionLayout.SortOrder = Enum.SortOrder.LayoutOrder
-        OptionLayout.Padding = UDim.new(0, 2)
+        OptionLayout.Padding = UDim.new(0, 4)
 
         local toggled = false
         DropBtn.Activated:Connect(function()
             toggled = not toggled
             OptionScroll.Visible = toggled
-            local contentHeight = math.min(#list * 28, 120)
-            local goalSize = toggled and UDim2.new(1, 0, 0, 32 + contentHeight) or UDim2.new(1, 0, 0, 32)
+            local contentHeight = math.min(#list * 34, 140)
+            local goalSize = toggled and UDim2.new(1, 0, 0, 38 + contentHeight) or UDim2.new(1, 0, 0, 38)
             TweenService:Create(DropdownFrame, TweenInfo.new(0.2), {Size = goalSize}):Play()
             DropBtn.Text = toggled and text .. "  ▲" or text .. "  ▼"
         end)
 
         for i, v in ipairs(list) do
             local Option = Instance.new("TextButton", OptionScroll)
-            Option.Size = UDim2.new(1, -4, 0, 26)
-            Option.BackgroundColor3 = theme.Secondary
-            Option.BackgroundTransparency = 0.5
+            Option.Size = UDim2.new(1, -4, 0, 30)
+            Option.BackgroundColor3 = theme.Main
+            Option.BackgroundTransparency = 0.3
             Option.Text = "  " .. v
             Option.TextColor3 = theme.Text
             Option.TextXAlignment = Enum.TextXAlignment.Left
             Option.Font = Enum.Font.Gotham
-            Option.TextSize = 11
-            Instance.new("UICorner", Option).CornerRadius = UDim.new(0, 4)
+            Option.TextSize = 12
+
+            local OptionCorner = Instance.new("UICorner")
+            OptionCorner.CornerRadius = UDim.new(0, 8)
+            OptionCorner.Parent = Option
+
             Option.Activated:Connect(function()
                 toggled = false
                 OptionScroll.Visible = false
-                TweenService:Create(DropdownFrame, TweenInfo.new(0.2), {Size = UDim2.new(1, 0, 0, 32)}):Play()
+                TweenService:Create(DropdownFrame, TweenInfo.new(0.2), {Size = UDim2.new(1, 0, 0, 38)}):Play()
                 DropBtn.Text = text .. "  ▼"
                 if callback then pcall(callback, v) end
             end)
         end
     end
 
-    -- ============ NOVOS ELEMENTOS PARA AUTO BUILDER ============
-
-    -- Elemento: Status Label (com fundo)
+    -- StatusLabel
     function Elements:StatusLabel(initialText)
         local Frame = Instance.new("Frame", Container)
-        Frame.Size = UDim2.new(1, 0, 0, 34)
+        Frame.Size = UDim2.new(1, 0, 0, 38)
         Frame.BackgroundColor3 = theme.Secondary
-        Frame.BackgroundTransparency = 0.3
-        Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 6)
+        Frame.BackgroundTransparency = 0.2
+
+        local FrameCorner = Instance.new("UICorner")
+        FrameCorner.CornerRadius = UDim.new(0, 10)
+        FrameCorner.Parent = Frame
 
         local Label = Instance.new("TextLabel", Frame)
-        Label.Size = UDim2.new(1, -10, 1, 0)
-        Label.Position = UDim2.new(0, 5, 0, 0)
+        Label.Size = UDim2.new(1, -12, 1, 0)
+        Label.Position = UDim2.new(0, 6, 0, 0)
         Label.BackgroundTransparency = 1
         Label.Text = initialText or "Pronto"
         Label.TextColor3 = theme.Text
@@ -890,19 +945,22 @@ function Library:CreateWindow(title, iconName)
         return Label
     end
 
-    -- Elemento: TextBox (Input)
+    -- TextBox
     function Elements:TextBox(placeholder, callback)
         local Box = Instance.new("TextBox", Container)
-        Box.Size = UDim2.new(1, 0, 0, 34)
+        Box.Size = UDim2.new(1, 0, 0, 38)
         Box.BackgroundColor3 = theme.Secondary
         Box.PlaceholderText = placeholder
         Box.PlaceholderColor3 = Color3.fromRGB(140, 140, 140)
         Box.Text = ""
         Box.TextColor3 = theme.Text
         Box.Font = Enum.Font.Gotham
-        Box.TextSize = 12
+        Box.TextSize = 13
         Box.ClearTextOnFocus = false
-        Instance.new("UICorner", Box).CornerRadius = UDim.new(0, 6)
+
+        local BoxCorner = Instance.new("UICorner")
+        BoxCorner.CornerRadius = UDim.new(0, 10)
+        BoxCorner.Parent = Box
 
         Box.FocusLost:Connect(function()
             if callback then pcall(callback, Box.Text) end
@@ -911,25 +969,31 @@ function Library:CreateWindow(title, iconName)
         return Box
     end
 
-    -- Elemento: ProgressBar
+    -- ProgressBar
     function Elements:ProgressBar()
         local Frame = Instance.new("Frame", Container)
-        Frame.Size = UDim2.new(1, 0, 0, 24)
+        Frame.Size = UDim2.new(1, 0, 0, 26)
         Frame.BackgroundColor3 = theme.Secondary
-        Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 6)
+
+        local FrameCorner = Instance.new("UICorner")
+        FrameCorner.CornerRadius = UDim.new(0, 8)
+        FrameCorner.Parent = Frame
 
         local Fill = Instance.new("Frame", Frame)
         Fill.Size = UDim2.new(0, 0, 1, 0)
         Fill.BackgroundColor3 = theme.Accent
-        Instance.new("UICorner", Fill).CornerRadius = UDim.new(0, 6)
+
+        local FillCorner = Instance.new("UICorner")
+        FillCorner.CornerRadius = UDim.new(0, 8)
+        FillCorner.Parent = Fill
 
         return Fill
     end
 
-    -- Elemento: Mode Selector (Botão de alternância)
+    -- ModeSelector
     function Elements:ModeSelector(text, options, defaultOption, callback)
         local Frame = Instance.new("Frame", Container)
-        Frame.Size = UDim2.new(1, 0, 0, 34)
+        Frame.Size = UDim2.new(1, 0, 0, 38)
         Frame.BackgroundTransparency = 1
 
         local Label = Instance.new("TextLabel", Frame)
@@ -950,7 +1014,10 @@ function Library:CreateWindow(title, iconName)
         Button.Font = Enum.Font.Gotham
         Button.TextSize = 12
         Button.AutoButtonColor = false
-        Instance.new("UICorner", Button).CornerRadius = UDim.new(0, 6)
+
+        local ButtonCorner = Instance.new("UICorner")
+        ButtonCorner.CornerRadius = UDim.new(0, 8)
+        ButtonCorner.Parent = Button
 
         Button.Activated:Connect(function()
             local currentIdx = 1
@@ -968,7 +1035,7 @@ function Library:CreateWindow(title, iconName)
     return Elements
 end
 
--- Inicializa os remotes ao carregar a library (opcional, mas útil)
+-- Inicializa os remotes
 Library:InitRemotes()
 
 return Library
